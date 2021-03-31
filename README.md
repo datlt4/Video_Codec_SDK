@@ -2,14 +2,18 @@
 > OS: Ubuntu 18.04.5 LTS x86_64<br>CUDA: 10.0<br>SDK: Video_Codec_SDK_9.1.23<br>
 FFmpeg: N-101443-g74b5564fb5<br>gcc 7<br>Python: 3.6
 
-# INSTALL ENVIRONMENT
+[<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Reference-com_logo.svg/1280px-Reference-com_logo.svg.png" height="15">](https://github.com/LuongTanDat/Video_Codec_SDK/blob/v9.1.23/doc/NVENC_VideoEncoder_API_ProgGuide.pdf)
+[<img src= "https://aimansoliman.files.wordpress.com/2020/02/github_owler_20180612_070358_original.png" height="25">](https://github.com/LuongTanDat/Video_Codec_SDK/tree/v9.1.23/Samples/milestone)
+
+
+# <span style="color:red">♡ INSTALL ENVIRONMENT ♥
 
 - [Download Ubuntu](https://releases.ubuntu.com/18.04/)
 - [Install CUDA](https://github.com/LuongTanDat/WLINUX/blob/master/Install_new_linux.md#install-cuda---allows-us-a-way-to-write-code-for-gpus-install-cuda-100---101)
 - [Install FFmpeg with Nvidia Accelator](https://github.com/LuongTanDat/WLINUX/blob/master/Install_new_linux.md#install-ffmpeg-with-nvidia-accelator)
 - [Video Codec SDK Archive](https://developer.nvidia.com/video-codec-sdk-archive)
 
-# DECODING ANY VIDEO CONTENT USING NVDECODE API
+# <span style="color:red">♢ DECODING ANY VIDEO CONTENT USING NVDECODE API ♦
 
 ## Step <a name="introduction"></a>
 1. [Create a `CUDA` context.](#create_a_cuda_context)
@@ -363,10 +367,16 @@ FFmpeg: N-101443-g74b5564fb5<br>gcc 7<br>Python: 3.6
   ```
 </details>
 
-# LOW LATENCY
+# <span style="color:red">♧ LOW LATENCY ♣
 
-This sample application demonstrates low latency decoding feature.
+This sample application demonstrates low latency decoding feature. This feature helps to get output frame as soon as it is decoded without any delay. The feature will work for streams having [`I` and `P` frames](#video_compression_picture_types) only.
 
-This feature helps to get output frame as soon as it is decoded without any delay.
+[**_[cited]_**](https://en.wikipedia.org/wiki/Video_compression_picture_types)<a name="video_compression_picture_types"></a>
+In the field of video compression a video frame is compressed using different algorithms with different advantages and disadvantages, centered mainly around amount of data compression. These different algorithms for video frames are called picture types or frame types. The three major picture types used in the different video algorithms are `I`, `P` and `B`. They are different in the following characteristics:
 
-The feature will work for streams having I and P frames only.
+- `I‑frames` are the least compressible but don't require other video frames to decode.
+- `P‑frames` can use data from previous frames to decompress and are more compressible than `I‑frames`.
+- `B‑frames` can use both previous and forward frames for data reference to get the highest amount of data compression.
+
+# <span style="color:red">♤♠
+
