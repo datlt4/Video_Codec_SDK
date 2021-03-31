@@ -1,0 +1,36 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "/usr/local/cuda/**",
+                "/usr/local/cuda/include/**",
+                "./NvCodec/**",
+                "./NvCodec/NvDecoder/**",
+                "./NvCodec/NvEncoder/**",
+                "./include/**",
+                "./Common/**",
+                "./Utils/**",
+                "./"
+            ],
+            "browse": {
+                "path": [
+                    "/usr/local/cuda/**",
+                    "/usr/local/cuda/include/**",
+                    "./NvCodec/**",
+                    "./NvCodec/NvDecoder/**",
+                    "./NvCodec/NvEncoder/**",
+                    "./include/**",
+                    "./Common/**",
+                    "./Utils/**",
+                    "./"
+                ],
+                "limitSymbolsToIncludedHeaders": false
+            },
+            "compilerPath": "/usr/bin/g++-7",
+            "cStandard": "c11",
+            "cppStandard": "c++11"
+        }
+    ],
+    "version": 4
+}

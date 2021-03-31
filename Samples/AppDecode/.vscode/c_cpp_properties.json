@@ -1,0 +1,34 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "/usr/local/cuda/**",
+                "/usr/local/cuda/include/**",
+                "/home/m/Documents/NVCODEC/Video_Codec_SDK_9.1.23/Samples/NvCodec/**",
+                "/home/m/Documents/NVCODEC/Video_Codec_SDK_9.1.23/Samples/NvCodec/NvDecoder/**",
+                "/home/m/Documents/NVCODEC/Video_Codec_SDK_9.1.23/Samples/NvCodec/NvEncoder/**",
+                "/home/m/Documents/NVCODEC/Video_Codec_SDK_9.1.23/include/**",
+                "/home/m/Documents/NVCODEC/Video_Codec_SDK_9.1.23/Samples/AppDecode/Common/**",
+                "/home/m/Documents/NVCODEC/Video_Codec_SDK_9.1.23/Samples/Utils/**"
+            ],
+            "browse": {
+                "path": [
+                    "/usr/local/cuda/**",
+                    "/usr/local/cuda/include/**",
+                    "/home/m/Documents/NVCODEC/Video_Codec_SDK_9.1.23/Samples/NvCodec/**",
+                    "/home/m/Documents/NVCODEC/Video_Codec_SDK_9.1.23/Samples/NvCodec/NvDecoder/**",
+                    "/home/m/Documents/NVCODEC/Video_Codec_SDK_9.1.23/Samples/NvCodec/NvEncoder/**",
+                    "/home/m/Documents/NVCODEC/Video_Codec_SDK_9.1.23/include/**",
+                    "/home/m/Documents/NVCODEC/Video_Codec_SDK_9.1.23/Samples/AppDecode/Common/**",
+                    "/home/m/Documents/NVCODEC/Video_Codec_SDK_9.1.23/Samples/Utils/**"
+                ],
+                "limitSymbolsToIncludedHeaders": false
+            },
+            "compilerPath": "/usr/bin/g++-7",
+            "cStandard": "c11",
+            "cppStandard": "c++11"
+        }
+    ],
+    "version": 4
+}
