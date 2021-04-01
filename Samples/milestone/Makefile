@@ -10,47 +10,30 @@
 #
 ################################################################################
 
-include ./common.mk
+include common.mk
 
-LDFLAGS += -lnvcuvid
-LDFLAGS += $(shell pkg-config --libs libavcodec libavutil libavformat)
-LDFLAGS += $(shell pkg-config --libs opencv)
-INCLUDES += $(shell pkg-config --cflags libavcodec libavutil libavformat)
-INCLUDES += $(shell pkg-config --cflags opencv)
+NVCCFLAGS := $(CCFLAGS)
 
-# ###############################################################################
-# # Target rules
-# all: build
+LDFLAGS += -L$(CUDA_PATH)/lib64 -lcudart -lnvcuvid -pthread
+LDFLAGS += $(shell pkg-config --libs libavcodec libavutil libavformat opencv)
+INCLUDES += $(shell pkg-config --cflags libavcodec libavutil libavformat opencv)
 
-# build: app
-
-# NvDecoder.o: ./NvCodec/NvDecoder/NvDecoder.cpp ./NvCodec/NvDecoder/NvDecoder.h
-# 	$(GCC) $(CCFLAGS) $(INCLUDES) -o $@ -c $<
-
-# AppDec.o: AppDec.cpp ./NvCodec/NvDecoder/NvDecoder.h \
-#           ./Utils/NvCodecUtils.h ./Utils/Logger.h
-# 	$(GCC) $(CCFLAGS) $(INCLUDES) -o $@ -c $<
-
-# app: AppDec.o NvDecoder.o
-# 	$(GCC) $(CCFLAGS) -o $@ $^ $(LDFLAGS)
-
-
-################################################################################
 # Target rules
 all: build
 
 build: app
 
-NvDecoder.o: ./NvCodec/NvDecoder/NvDecoder.cpp ./NvCodec/NvDecoder/NvDecoder.h
+NvDecoder.o: NvCodec/NvDecoder/NvDecoder.cpp NvCodec/NvDecoder/NvDecoder.h
 	$(GCC) $(CCFLAGS) $(INCLUDES) -o $@ -c $<
 
-main.o: main.cpp main.hpp ./NvCodec/NvDecoder/NvDecoder.h \
-		./Utils/NvCodecUtils.h ./Utils/Logger.h
+main.o: main.cpp main.hpp NvCodec/NvDecoder/NvDecoder.h \
+		Utils/NvCodecUtils.h Utils/FFmpegDemuxer.h \
+		Common/AppDecUtils.h Utils/Logger.h
 	$(GCC) $(CCFLAGS) $(INCLUDES) -o $@ -c $<
 
 app: main.o NvDecoder.o
 	$(GCC) $(CCFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -rf AppDec AppDec.o NvDecoder.o app main.o NvDecoder.o
+	rm -rf app main.o NvDecoder.o
 
