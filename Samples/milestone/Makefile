@@ -9,12 +9,42 @@
 # is strictly prohibited.
 #
 ################################################################################
+# # NVIDIA DECODER
+# include common.mk
 
+# NVCCFLAGS := $(CCFLAGS)
+
+# LDFLAGS += -L$(CUDA_PATH)/lib64 -lcudart -lnvcuvid -pthread
+# LDFLAGS += $(shell pkg-config --libs libavcodec libavutil libavformat opencv)
+# INCLUDES += $(shell pkg-config --cflags libavcodec libavutil libavformat opencv)
+
+# # Target rules
+# all: build
+
+# build: app
+
+# NvDecoder.o: NvCodec/NvDecoder/NvDecoder.cpp NvCodec/NvDecoder/NvDecoder.h
+# 	$(GCC) $(CCFLAGS) $(INCLUDES) -o $@ -c $<
+
+# main.o: main.cpp main.hpp NvCodec/NvDecoder/NvDecoder.h \
+# 		Utils/NvCodecUtils.h Utils/FFmpegDemuxer.h \
+# 		Common/AppDecUtils.h Utils/Logger.h
+# 	$(GCC) $(CCFLAGS) $(INCLUDES) -o $@ -c $<
+
+# app: main.o NvDecoder.o
+# 	$(GCC) $(CCFLAGS) -o $@ $^ $(LDFLAGS)
+
+# clean:
+# 	rm -rf app main.o NvDecoder.o
+
+################################################################################
+# NVIDIA ENCODER
 include common.mk
 
 NVCCFLAGS := $(CCFLAGS)
+# CCFLAGS += -fPIC -Wall -Wextra -O3 -g 
 
-LDFLAGS += -L$(CUDA_PATH)/lib64 -lcudart -lnvcuvid -pthread
+LDFLAGS += -L$(CUDA_PATH)/lib64 -lcudart -lnvcuvid -pthread -lnvidia-encode
 LDFLAGS += $(shell pkg-config --libs libavcodec libavutil libavformat opencv)
 INCLUDES += $(shell pkg-config --cflags libavcodec libavutil libavformat opencv)
 
@@ -23,17 +53,62 @@ all: build
 
 build: app
 
-NvDecoder.o: NvCodec/NvDecoder/NvDecoder.cpp NvCodec/NvDecoder/NvDecoder.h
+NvDecoder.o: NvCodec/NvDecoder/NvDecoder.cpp \
+				NvCodec/NvDecoder/NvDecoder.h
 	$(GCC) $(CCFLAGS) $(INCLUDES) -o $@ -c $<
 
-main.o: main.cpp main.hpp NvCodec/NvDecoder/NvDecoder.h \
-		Utils/NvCodecUtils.h Utils/FFmpegDemuxer.h \
-		Common/AppDecUtils.h Utils/Logger.h
+NvEncoder.o: NvCodec/NvEncoder/NvEncoder.cpp \
+				NvCodec/NvEncoder/NvEncoder.h
 	$(GCC) $(CCFLAGS) $(INCLUDES) -o $@ -c $<
 
-app: main.o NvDecoder.o
+NvEncoderCuda.o: NvCodec/NvEncoder/NvEncoderCuda.cpp \
+					NvCodec/NvEncoder/NvEncoderCuda.h \
+                	NvCodec/NvEncoder/NvEncoder.h
+	$(GCC) $(CCFLAGS) $(INCLUDES) -o $@ -c $<
+
+NvEncoderOutputInVidMemCuda.o: NvCodec/NvEncoder/NvEncoderOutputInVidMemCuda.cpp \
+								NvCodec/NvEncoder/NvEncoderOutputInVidMemCuda.h \
+								NvCodec/NvEncoder/NvEncoder.h \
+								NvCodec/NvEncoder/NvEncoderCuda.h
+	$(GCC) $(CCFLAGS) $(INCLUDES) -o $@ -c $<
+
+crc.o: Utils/crc.cu
+	$(NVCC) $(NVCCFLAGS) $(INCLUDES) -o $@ -c $<
+
+ColorSpace.o: Utils/ColorSpace.cu
+	$(NVCC) $(NVCCFLAGS) $(INCLUDES) -o $@ -c $<
+
+main.o: main.cpp main.hpp \
+		NvCodec/NvEncoder/NvEncoder.h \
+		NvCodec/NvEncoder/NvEncoderOutputInVidMemCuda.h \
+		NvCodec/NvEncoder/NvEncoderCuda.h \
+		NvCodec/NvDecoder/NvDecoder.h \
+		Utils/NvCodecUtils.h \
+		Utils/NvEncoderCLIOptions.h \
+		Utils/Logger.h \
+		Utils/NvCodecUtils.h \
+		Utils/FFmpegDemuxer.h \
+		Utils/Logger.h \
+		Common/AppDecUtils.h
+	$(GCC) $(CCFLAGS) $(INCLUDES) -o $@ -c $<
+
+app: main.o \
+		NvDecoder.o \
+		NvEncoder.o \
+		NvEncoderCuda.o \
+		NvEncoderOutputInVidMemCuda.o \
+		ColorSpace.o \
+		crc.o
 	$(GCC) $(CCFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -rf app main.o NvDecoder.o
-
+	rm -rf app \
+			AppEncCuda \
+			AppEncCuda.o \
+			NvEncoder.o \
+			NvDecoder.o \
+			ColorSpace.o \
+			NvEncoderCuda.o \
+			NvEncoderOutputInVidMemCuda.o \
+			crc.o \
+			main.o

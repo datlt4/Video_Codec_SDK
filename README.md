@@ -285,7 +285,7 @@ FFmpeg: N-101443-g74b5564fb5<br>gcc 7<br>Python: 3.6
 
 ## Full source code <a name="full_source_code"></a>
 
-- `main.hpp`
+- `main.cpp`
 
 <details>
   <summary>Click to expand!</summary>
@@ -298,17 +298,19 @@ FFmpeg: N-101443-g74b5564fb5<br>gcc 7<br>Python: 3.6
   #include <opencv2/highgui.hpp>
   #include <opencv2/imgproc.hpp>
   
-  void appDec(std::string);
+  simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
   
-  void appDec(std::string szInFilePath)
+  int main()
   {
+      ShowDecoderCapability();
+      std::string szInFilePath = "/home/m/Documents/NVCODEC/your_name.mp4";
+
       ck(cuInit(0));
       int nGpu = 0;
       ck(cuDeviceGetCount(&nGpu));
-  
       CUcontext cuContext = NULL;
       int iGpu = 0;
-  
+
       createCudaContext(&cuContext, iGpu, 0);
       FFmpegDemuxer demuxer(szInFilePath.c_str());
       NvDecoder dec(cuContext, false, FFmpeg2NvCodecId(demuxer.GetVideoCodec()), NULL, false, false);
@@ -326,7 +328,7 @@ FFmpeg: N-101443-g74b5564fb5<br>gcc 7<br>Python: 3.6
               LOG(INFO) << dec.GetVideoInfo();
               LOG(INFO) << "Output format: " << aszDecodeOutFormat[dec.GetOutputFormat()];
           }
-  
+
           if (nFrameReturned < 1)
               continue;
           nFrame += nFrameReturned;
@@ -340,28 +342,10 @@ FFmpeg: N-101443-g74b5564fb5<br>gcc 7<br>Python: 3.6
           if (c == 27)
               break;
       } while (nVideoBytes);
-  
+
       ck(cuCtxDestroy(cuContext));
       LOG(INFO) << "End of process";
-  }
-  ```
-</details>
 
-- `main.cpp`
-
-<details>
-  <summary>Click to expand!</summary>
-
-  ```cpp
-  #include "main.hpp"
-
-  simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
-
-  int main()
-  {
-      ShowDecoderCapability();
-      std::string szInFilePath = "/home/m/Documents/NVCODEC/your_name.mp4";
-      appDec(szInFilePath);
       return 0;
   }
   ```
@@ -378,5 +362,176 @@ In the field of video compression a video frame is compressed using different al
 - `P‑frames` can use data from previous frames to decompress and are more compressible than `I‑frames`.
 - `B‑frames` can use both previous and forward frames for data reference to get the highest amount of data compression.
 
-# <span style="color:red">♤♠
+## Source
 
+- `main.cpp`
+
+<details>
+  <summary>Click to expand!</summary>
+
+  ```cpp
+  #include <iostream>
+  #include <algorithm>
+  #include <thread>
+  #include <cuda.h>
+  #include "NvCodec/NvDecoder/NvDecoder.h"
+  #include "Utils/NvCodecUtils.h"
+  #include "Utils/FFmpegDemuxer.h"
+  #include "Common/AppDecUtils.h"
+  #include <opencv2/highgui.hpp>
+  #include <opencv2/imgproc.hpp>
+  #include <vector>
+  #include <string.h>
+  
+  int main()
+  {
+      ShowDecoderCapability();
+      std::string szInFilePath = "/home/m/Documents/NVCODEC/your_name.mp4";
+      try
+      {
+          ck(cuInit(0));
+          int nGpu = 0;
+          int iGpu = 0;
+          ck(cuDeviceGetCount(&nGpu));
+          if (iGpu < 0 || iGpu >= nGpu)
+          {
+              std::ostringstream err;
+              err << "GPU ordinal out of range. Should be within [" << 0 << ", " << nGpu - 1 << "]" << std::endl;
+              throw std::invalid_argument(err.str());
+          }
+  
+          CUcontext cuContext = NULL;
+          createCudaContext(&cuContext, iGpu, 0);
+  
+          FFmpegDemuxer demuxer(szInFilePath.c_str());
+          // Here set bLowLatency=true in the constructor.
+          // Please don't use this flag except for low latency, it is harder to get 100% utilization of
+          // hardware decoder with this flag set.
+          NvDecoder dec(cuContext, false, FFmpeg2NvCodecId(demuxer.GetVideoCodec()), NULL, false);
+  
+          int nVideoBytes = 0, nFrameReturned = 0, nFrame = 0, n = 0;
+          uint8_t *pVideo = NULL, **ppFrame;
+          int64_t *pTimestamp;
+          cv::Mat mat_bgr;
+          std::vector<std::string> aszDecodeOutFormat = {"NV12", "P016", "YUV444", "YUV444P16"};
+          cv::namedWindow("a", cv::WINDOW_NORMAL);
+  
+          do
+          {
+              demuxer.Demux(&pVideo, &nVideoBytes);
+              // Set flag CUVID_PKT_ENDOFPICTURE to signal that a complete packet has been sent to decode
+              dec.Decode(pVideo, nVideoBytes, &ppFrame, &nFrameReturned, CUVID_PKT_ENDOFPICTURE, &pTimestamp, n++);
+              if (!nFrame && nFrameReturned)
+              {
+                  LOG(INFO) << dec.GetVideoInfo();
+                  LOG(INFO) << "Output format: " << aszDecodeOutFormat[dec.GetOutputFormat()];
+              }
+              if (nFrameReturned < 1)
+                  continue;
+              nFrame += nFrameReturned;
+              cv::Mat mat_yuv = cv::Mat(dec.GetHeight() * 1.5, dec.GetWidth(), CV_8UC1, ppFrame[nFrameReturned - 1]);
+              cv::Mat mat_rgb = cv::Mat(dec.GetHeight(), dec.GetWidth(), CV_8UC3);
+              cv::cvtColor(mat_yuv, mat_rgb, cv::COLOR_YUV2BGR_NV21);
+              cv::cvtColor(mat_rgb, mat_bgr, cv::COLOR_RGB2BGR);
+  
+              cv::imshow("a", mat_bgr);
+              char c = (char)cv::waitKey(25);
+              if (c == 27)
+                  break;
+  
+              // For a stream without B-frames, "one in and one out" is expected, and nFrameReturned should be always 1 for each input packet
+              LOG(INFO) << "Decode: nVideoBytes=" <<   std::setw(10) << nVideoBytes
+                        << ", nFrameReturned=" << std::setw  (10) << nFrameReturned
+                        << ", total=" << std::setw(10) <<   nFrame;
+              for (int i = 0; i < nFrameReturned; i++)
+              {
+                  LOG(INFO) << "Timestamp: " << pTimestamp  [i];
+              }
+  
+          } while (nVideoBytes);
+      }
+      catch (const std::exception &ex)
+      {
+          LOG(ERROR) << ex.what();
+          exit(1);
+      }
+      return 0;
+  }
+  ```
+</details>
+
+# <span style="color:red">♤ PYTHON BINDING ♠
+
+# <span style="color:red">♡ BASIC ENCODING FLOW USING NVENCODE API ♥
+
+The NVIDIA video encoder API is designed to accept raw video frames (in `YUV` or `RGB` 
+format) and output the `H.264` or `HEVC` bitstream
+
+## Step <a name="introduction"></a>
+1. [Initialize the encoder.]
+2. [Set up the desired encoding parameters.]
+3. [Allocate input/output buffers.]
+4. [Copy frames to input buffers and read bitstream from the output buffers. This can be done synchronously (Windows & Linux) or asynchronously (Windows 7 and above only).]
+5. Clean-up - release all allocated input/output buffers.
+6. [Close the encoding session.]
+
+**_Note:_**
+
+- `Bitstream`: data found in a stream of bits used in digital communication or data storage application.
+
+- Before creating encoder, we should query capabilities of GPU to ensure that required functional is supported.
+
+<details>
+  <summary>Click to expand!</summary>
+
+  ```cpp
+  void ShowEncoderCapability()
+  {
+      ck(cuInit(0));
+      int nGpu = 0;
+      ck(cuDeviceGetCount(&nGpu));
+      std::cout << "Encoder Capability" << std::endl
+                << std::endl;
+      for (int iGpu = 0; iGpu < nGpu; iGpu++)
+      {
+          CUdevice cuDevice = 0;
+          ck(cuDeviceGet(&cuDevice, iGpu));
+          char szDeviceName[80];
+          ck(cuDeviceGetName(szDeviceName, sizeof(szDeviceName), cuDevice));
+          CUcontext cuContext = NULL;
+          ck(cuCtxCreate(&cuContext, 0, cuDevice));
+          NvEncoderCuda enc(cuContext, 1280, 720, NV_ENC_BUFFER_FORMAT_NV12);
+  
+          std::cout << "GPU " << iGpu << " - " << szDeviceName << std::endl
+                    << std::endl;
+          std::cout << "\tH264:\t\t"
+                    << "  " << (enc.GetCapabilityValue(NV_ENC_CODEC_H264_GUID, NV_ENC_CAPS_SUPPORTED_RATECONTROL_MODES) ? "yes" : "no") << std::endl
+                    << "\tH264_444:\t"
+                    << "  " << (enc.GetCapabilityValue(NV_ENC_CODEC_H264_GUID, NV_ENC_CAPS_SUPPORT_YUV444_ENCODE) ? "yes" : "no") << std::endl
+                    << "\tH264_ME:\t"
+                    << "  " << (enc.GetCapabilityValue(NV_ENC_CODEC_H264_GUID, NV_ENC_CAPS_SUPPORT_MEONLY_MODE) ? "yes" : "no") << std::endl
+                    << "\tH264_WxH:\t"
+                    << "  " << (enc.GetCapabilityValue(NV_ENC_CODEC_H264_GUID, NV_ENC_CAPS_WIDTH_MAX)) << "*" << (enc.GetCapabilityValue(NV_ENC_CODEC_H264_GUID, NV_ENC_CAPS_HEIGHT_MAX)) << std::endl
+                    << "\tHEVC:\t\t"
+                    << "  " << (enc.GetCapabilityValue(NV_ENC_CODEC_HEVC_GUID, NV_ENC_CAPS_SUPPORTED_RATECONTROL_MODES) ? "yes" : "no") << std::endl
+                    << "\tHEVC_Main10:\t"
+                    << "  " << (enc.GetCapabilityValue(NV_ENC_CODEC_HEVC_GUID, NV_ENC_CAPS_SUPPORT_10BIT_ENCODE) ? "yes" : "no") << std::endl
+                    << "\tHEVC_Lossless:\t"
+                    << "  " << (enc.GetCapabilityValue(NV_ENC_CODEC_HEVC_GUID, NV_ENC_CAPS_SUPPORT_LOSSLESS_ENCODE) ? "yes" : "no") << std::endl
+                    << "\tHEVC_SAO:\t"
+                    << "  " << (enc.GetCapabilityValue(NV_ENC_CODEC_HEVC_GUID, NV_ENC_CAPS_SUPPORT_SAO) ? "yes" : "no") << std::endl
+                    << "\tHEVC_444:\t"
+                    << "  " << (enc.GetCapabilityValue(NV_ENC_CODEC_HEVC_GUID, NV_ENC_CAPS_SUPPORT_YUV444_ENCODE) ? "yes" : "no") << std::endl
+                    << "\tHEVC_ME:\t"
+                    << "  " << (enc.GetCapabilityValue(NV_ENC_CODEC_HEVC_GUID, NV_ENC_CAPS_SUPPORT_MEONLY_MODE) ? "yes" : "no") << std::endl
+                    << "\tHEVC_WxH:\t"
+                    << "  " << (enc.GetCapabilityValue(NV_ENC_CODEC_HEVC_GUID, NV_ENC_CAPS_WIDTH_MAX)) << "*" << (enc.GetCapabilityValue(NV_ENC_CODEC_HEVC_GUID, NV_ENC_CAPS_HEIGHT_MAX)) << std::endl;
+  
+          std::cout << std::endl;
+  
+          enc.DestroyEncoder();
+          ck(cuCtxDestroy(cuContext));
+      }
+  }
+  ```
+</details>
